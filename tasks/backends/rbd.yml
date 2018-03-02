@@ -9,15 +9,15 @@
     src: "/tmp/ceph.conf"
   register: "ceph_conf"
 
-- name: Create cinder-volume-rbd configmaps
+- name: Create cinder-volume-ceph configmaps
   ignore_errors: yes
   k8s_v1_config_map:
-    name: cinder-volume-rbd
+    name: cinder-volume-ceph
     namespace: "{{ namespace }}"
     state: present
     debug: yes
     labels:
-      service: cinder-volume-rbd
+      service: cinder-volume-ceph
     data:
       config.json: |
         {
@@ -53,22 +53,100 @@
       cinder.conf: |
         {{cinder_conf['content'] | b64decode}}
 
-      ceph.conf: |
-        {{ceph_conf['content'] | b64decode}}
 
+- set_fact:
+    init_container:
+      - name: updated-config
+        image: tripleoupstream/centos-binary-kolla-toolbox
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp -a /srv/configmap/..data/* /srv/pod-main-config/;
+            cp -a /srv/ceph/..data/* /srv/pod-main-config/;
+            CONF=/srv/pod-main-config/cinder.conf;
+            crudini --set $CONF DEFAULT transport_url rabbit://guest:$RABBITMQ_PASSWORD@rabbitmq:5672/?ssl=0;
+            crudini --set $CONF oslo_messaging_notifications transport_url rabbit://guest:$RABBITMQ_PASSWORD@rabbitmq:5672/?ssl=0;
+            crudini --set $CONF database connection mysql+pymysql://root:$DB_ROOT_PASSWORD@mariadb:3306/cinder;
+            crudini --set $CONF database password $CINDER_PASSWORD;
+        env:
+        - name: DB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cinder-secrets
+              key: mariadb-root-password
+        - name: CINDER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cinder-secrets
+              key: cinder-password
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cinder-secrets
+              key: rabbitmq-password
+
+        volumeMounts:
+         - name: template-config
+           mountPath: /srv/configmap
+         - name: final-config
+           mountPath: /srv/pod-main-config
+         - name: ceph-secrets
+           mountPath: /srv/ceph
 
 - name: Create Cinder Volume Deployment
-  k8s_apps_v1beta1_deployment:
-    name: cinder-volume-rbd
+  k8s_v1beta2_deployment:
+    name: cinder-volume-ceph
     namespace: "{{ namespace }}"
     service_account_name: "{{ service_account }}"
     labels:
-      app: cinder-volume-rbd
-      service: cinder-volume-rbd
+      app: cinder-volume-ceph
+      service: cinder-volume-ceph
     replicas: 1
     spec_template_metadata_labels:
-      app: cinder-volume-rbd
-      service: cinder-volume-rbd
+      app: cinder-volume-ceph
+      service: cinder-volume-ceph
+    init_containers:
+      - name: updated-config
+        image: tripleoupstream/centos-binary-kolla-toolbox
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp -a /srv/configmap/..data/* /srv/pod-main-config/;
+            cp -a /srv/ceph/..data/* /srv/pod-main-config/;
+            CONF=/srv/pod-main-config/cinder.conf;
+            crudini --set $CONF DEFAULT transport_url rabbit://guest:$RABBITMQ_PASSWORD@rabbitmq:5672/?ssl=0;
+            crudini --set $CONF oslo_messaging_notifications transport_url rabbit://guest:$RABBITMQ_PASSWORD@rabbitmq:5672/?ssl=0;
+            crudini --set $CONF database connection mysql+pymysql://root:$DB_ROOT_PASSWORD@mariadb:3306/cinder;
+            crudini --set $CONF database password $CINDER_PASSWORD;
+        env:
+        - name: DB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cinder-secrets
+              key: mariadb-root-password
+        - name: CINDER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cinder-secrets
+              key: cinder-password
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cinder-secrets
+              key: rabbitmq-password
+
+        volumeMounts:
+         - name: template-config
+           mountPath: /srv/configmap
+         - name: final-config
+           mountPath: /srv/pod-main-config
+         - name: ceph-secrets
+           mountPath: /srv/ceph
+
     containers:
     - name: cinder-volume
       image: tripleoupstream/centos-binary-cinder-volume:latest
@@ -79,17 +157,38 @@
           mountPath: /etc/ceph/ceph.client.cinder.keyring
       env:
         - name: TZ
-          value: UTC
+         value: UTC
         - name: KOLLA_CONFIG_STRATEGY
           value: COPY_ALWAYS
         - name: KOLLA_KUBERNETES
           value: ""
-    volumes:
-      - name: kolla-config
-        config_map:
-          name: cinder-volume-rbd
-      - name: ceph-client-cinder-keyring
-        secret:
-          secretName: ceph-client-cinder-keyring
+        - name: DB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cinder-secrets
+              key: mariadb-root-password
+        - name: CINDER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cinder-secrets
+              key: cinder-password
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cinder-secrets
+              key: rabbitmq-password
 
+      volumeMounts:
+        - name: final-config
+          mountPath: /var/lib/kolla/config_files
+
+    volumes:
+      - name: template-config
+        configMap:
+          name: cinder-volume-ceph
+      - name: final-config
+        emptyDir: {}
+      - name: ceph-secrets
+        secret:
+          secretName: ceph-secrets
 

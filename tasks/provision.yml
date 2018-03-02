@@ -1,5 +1,4 @@
-
-- include: hiera.yml
+---
 - include: enabled_backends.yml
 
 - name: Generate config files
