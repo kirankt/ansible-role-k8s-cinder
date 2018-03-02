@@ -31,12 +31,10 @@ role_name: cinder
 enabled_backends: []
 
 #
-# Iscsi
-iscsi:
-    cinder_enable_iscsi_backend: false
-    cinder_enable_rbd_backend: false
-    cinder_enable_xtremio_backend: false
-    cinder_enable_netapp_backend: false
+cinder_enable_iscsi_backend: false
+cinder_enable_rbd_backend: false
+cinder_enable_xtremio_backend: false
+cinder_enable_netapp_backend: false
 #
 # Xtremio
 xtremio:
@@ -54,6 +52,6 @@ xtremio:
 ceph:
     cinder_rbd_pool_name: cinder_volumes
     cinder_rbd_user_name: cinder
-    cephx_key: 
+    client_key: 
     ceph_authentication_type: cephx
     ceph_mon_host: 

@@ -1,7 +1,7 @@
 [DEFAULT]
 enable_v3_api = true
 glance_api_servers = none
-enabled_backends = {{ enabled_backends }}
+enabled_backends = {{ enabled_backends | join(",") }}
 glance_api_version = 2
 log_dir = /var/log/cinder
 osapi_volume_listen = 0.0.0.0
@@ -45,20 +45,11 @@ iscsi_protocol=iscsi
 {% endif %}
 
 {% if cinder_enable_xtremio_backend %}
-[xtremio]
-max_over_subscription_ratio = {{xtremio.max_over_subscription_ratio}}
-use_multipath_for_image_xfer= {{xtremio.use_multipath_for_image_xfer}}
-volume_backend_name=xtremio
-volume_driver=cinder.volume.drivers.emc.xtremio.XtremIOISCSIDriver
-san_ip={{xtremio.san_ip}}
-xtremio_cluster_name={{xtremio.xtremio_cluster_name}}
-san_login={{xtremio.san_login}}
-san_password={{xtremio.san_password}}
-image_volume_cache_enabled={{xtremio.image_volume_cache_enabled}}
+{% include 'xtremio/cinder-annex.conf.j2' %}
 {% endif %}
 
 {% if cinder_enable_rbd_backend %}
-  {% include 'rbd/ceph-annex.conf.j2' %}
+{% include 'rbd/cinder-annex.conf.j2' %}
 {% endif %}
 
 {% if cinder_enable_netapp_backend %}

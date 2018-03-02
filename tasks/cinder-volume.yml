@@ -6,6 +6,6 @@
 - include: backends/rbd.yml
   when: cinder_enable_rbd_backend
 - include: backends/xtremio.yml
-  when: dellemc_xtremio_iscsi_backend
+  when: cinder_enable_xtremio_backend
 - include: backends/netapp.yml
   when: cinder_enable_netapp_backend
