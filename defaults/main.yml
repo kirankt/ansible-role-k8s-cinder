@@ -6,7 +6,7 @@ namespace: openstack
 service_account: cinder
 privileged_service_account: cinder-privileged
 
-mariadb_root: root
+mariadb_root_user: root
 mariadb_root_password: weakpassword
 
 cinder_user: cinder
@@ -55,3 +55,15 @@ ceph:
     client_key: 
     ceph_authentication_type: cephx
     ceph_mon_host: 
+
+# Netapp
+netapp:
+    volume_driver: cinder.volume.drivers.netapp.common.NetAppDriver
+    netapp_storage_family: ontap_7mode
+    netapp_storage_protocol: nfs
+    nfs_shares_config: /etc/cinder/shares.conf 
+    nfs_shares: 
+    netapp_server_hostname:
+    netapp_server_port: 
+    netapp_login: 
+    netapp_password: 

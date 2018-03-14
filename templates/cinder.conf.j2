@@ -53,9 +53,5 @@ iscsi_protocol=iscsi
 {% endif %}
 
 {% if cinder_enable_netapp_backend %}
-[netapp]
-title = tripleo_netapp
-netapp_login = {{netapp.netapp_login}}
-netapp_password = {{netapp.netapp_password}}
-netapp_server_hostname = {{netapp.netapp_server_hostname}}
+{% include 'netapp/cinder-annex.conf.j2' %}
 {% endif %}
